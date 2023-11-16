@@ -1,0 +1,5 @@
+{
+  "render_token": "abcde",
+  "webhook_secret": "1234",
+  "github_token": "abcde1234"
+}
