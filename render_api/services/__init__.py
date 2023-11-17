@@ -1,6 +1,6 @@
-from .deployment_service import create_or_update_github_deployment_status
+from .deployment_status_service import manage_deployment_status
 
-__all__ = ["create_or_update_github_deployment_status"]
+__all__ = ["manage_deployment_status"]
 
 __author__ = "Fyleek"
 __description__ = "Defines API routes and endpoints"
