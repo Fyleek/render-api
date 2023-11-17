@@ -6,3 +6,6 @@ debug.log
 warning.log
 error.log
 info.log
+
+coverage.xml
+.coverage
