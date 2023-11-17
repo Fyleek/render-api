@@ -9,8 +9,10 @@ from render_api.utils.secret_token_handler import get_token, verify_signature
 # Test data
 payload_body = b"test payload"
 secret_token = "test_secret"
-signature_header = "sha256=" + hmac.new(secret_token.encode("utf-8"), msg=payload_body,
-                                        digestmod=hashlib.sha256).hexdigest()
+signature_header = (
+    "sha256="
+    + hmac.new(secret_token.encode("utf-8"), msg=payload_body, digestmod=hashlib.sha256).hexdigest()
+)
 
 
 # Test when token is available as an environment variable
@@ -21,7 +23,11 @@ def test_get_token_from_env():
 
 # Test when token is not in env but in a local file
 @patch.dict(os.environ, {}, clear=True)
-@patch("builtins.open", new_callable=mock_open, read_data=json.dumps({"GITHUB_TOKEN": "local_github_token"}))
+@patch(
+    "builtins.open",
+    new_callable=mock_open,
+    read_data=json.dumps({"GITHUB_TOKEN": "local_github_token"}),
+)
 def test_get_token_from_file(mock_file):
     assert get_token("github_token") == "local_github_token"
 
