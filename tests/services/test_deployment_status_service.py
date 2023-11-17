@@ -10,6 +10,8 @@ from render_api.services.deployment_status_service import (
     manage_deployment_status,
 )
 
+bearer = "Bearer testtoken"
+full_name = "user/repo"
 
 @pytest.fixture
 def mock_all():
@@ -47,7 +49,7 @@ def mock_all():
 
 
 def test_create_github_deployment_status(mock_all):
-    mock_all["get_headers"].return_value = {"Authorization": "Bearer testtoken"}
+    mock_all["get_headers"].return_value = {"Authorization": f"{bearer}"}
     mock_response = mock.Mock()
     mock_response.status_code = 201
     mock_all["post"].return_value = mock_response
@@ -71,7 +73,7 @@ def test_create_github_deployment_status(mock_all):
 
 
 def test_create_github_deployment(mock_all):
-    mock_all["get_headers"].return_value = {"Authorization": "Bearer testtoken"}
+    mock_all["get_headers"].return_value = {"Authorization": f"{bearer}"}
     mock_response = mock.Mock()
     mock_response.json.return_value = {"id": "123456"}
     mock_response.status_code = 201
@@ -95,7 +97,7 @@ def test_create_github_deployment(mock_all):
 
 
 def test_get_render_service_id(mock_all):
-    mock_all["get_headers"].return_value = {"Authorization": "Bearer testtoken"}
+    mock_all["get_headers"].return_value = {"Authorization": f"{bearer}"}
     mock_response = mock.Mock()
     mock_response.json.return_value = [{"service": {"repo": "repo", "id": "service_id"}}]
     mock_response.status_code = 200
@@ -105,13 +107,13 @@ def test_get_render_service_id(mock_all):
 
     mock_all["get_headers"].assert_called_once_with("render")
     mock_all["get"].assert_called_once_with(
-        f"{RENDER_ROOT}/services", headers={"Authorization": "Bearer testtoken"}
+        f"{RENDER_ROOT}/services", headers={"Authorization": f"{bearer}"}
     )
     assert service_id == "service_id"
 
 
 def test_get_render_deployment_status(mock_all):
-    mock_all["get_headers"].return_value = {"Authorization": "Bearer testtoken"}
+    mock_all["get_headers"].return_value = {"Authorization": f"{bearer}"}
     mock_response = mock.Mock()
     mock_response.json.return_value = [{"deploy": {"status": "success", "id": "deployment_id"}}]
     mock_response.status_code = 200
@@ -121,13 +123,12 @@ def test_get_render_deployment_status(mock_all):
 
     mock_all["get_headers"].assert_called_once_with("render")
     mock_all["get"].assert_called_once_with(
-        f"{RENDER_ROOT}/services/service_id/deploys", headers={"Authorization": "Bearer testtoken"}
+        f"{RENDER_ROOT}/services/service_id/deploys", headers={"Authorization": f"{bearer}"}
     )
     assert service_status == {"status": "success", "id": "deployment_id"}
 
 
 def test_manage_deployment_status(mock_all):
-    # Configuration des simulations
     mock_all["get_render_service_id"].return_value = "service_id"
     mock_all["get_render_deployment_status"].return_value = {
         "status": "live",
@@ -135,27 +136,23 @@ def test_manage_deployment_status(mock_all):
     }
     mock_all["create_github_deployment"].return_value = "github_deployment_id"
 
-    # Données de test
     test_data = {
         "pull_request": {"state": "closed", "merged": True},
         "repository": {
-            "full_name": "user/repo",
+            "full_name": f"{full_name}",
             "html_url": "https://example.com/repo",
             "owner": {"login": "user"},
             "name": "repo",
         },
     }
 
-    # Appel de la fonction testée
     manage_deployment_status(test_data)
 
-    # Vérification des appels simulés
     mock_all["get_render_service_id"].assert_called_once_with("https://example.com/repo")
     mock_all["get_render_deployment_status"].assert_called_once_with("service_id")
-    mock_all["create_github_deployment"].assert_called_once_with("user/repo", "repo", "user")
+    mock_all["create_github_deployment"].assert_called_once_with(f"{full_name}", "repo", "user")
     mock_all["create_github_deployment_status"].assert_called_once_with(
-        "user", "repo", "success", "deployment_id", "user/repo", "github_deployment_id"
+        "user", "repo", "success", "deployment_id", f"{full_name}", "github_deployment_id"
     )
 
-    # Aucun appel d'erreur ne devrait être effectué
     mock_all["logger_error"].assert_not_called()
