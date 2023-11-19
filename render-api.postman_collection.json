@@ -264,7 +264,7 @@
 	"auth": {
 		"type": "bearer",
 		"bearer": {
-			"token": "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"
+			"token": ""
 		}
 	},
 	"event": [
