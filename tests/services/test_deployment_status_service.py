@@ -256,4 +256,4 @@ def test_log_and_handle_errors_exception(mock_all):
     result = test_func()
 
     assert result is None
-    mock_all["logger_error"].assert_called_once_with(f"Exception in test_func| Test exception")
+    mock_all["logger_error"].assert_called_once_with("Exception in test_func| Test exception")
