@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 # Configure a file handler to log DEBUG-level logs to a debug.log file
 debug_file_handler = logging.FileHandler("debug.log")
-debug_file_handler.setLevel(logging.DEBUG)
+debug_file_handler.setLevel(logging.INFO)
 
 # Create a formatter to customize the log message format
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
