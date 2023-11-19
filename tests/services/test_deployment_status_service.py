@@ -10,6 +10,7 @@ from render_api.services.deployment_status_service import (
     manage_deployment_status,
     process_deployment_status,
     update_github_deployment_status,
+    log_and_handle_errors,
 )
 
 bearer = "Bearer testtoken"
@@ -44,7 +45,9 @@ def mock_all():
         "render_api.services.deployment_status_service.manage_deployment_status"
     ) as mock_manage_deployment_status, mock.patch(
         "render_api.services.deployment_status_service.get_github_status"
-    ) as mock_get_github_status:
+    ) as mock_get_github_status, mock.patch(
+        "render_api.services.deployment_status_service.log_and_handle_errors"
+    ) as mock_log_and_handle_errors:
         mocks = {
             "get_render_service_id": mock_get_render_service_id,
             "get_render_deployment_status": mock_get_render_deployment_status,
@@ -59,6 +62,7 @@ def mock_all():
             "process_deployment_status": mock_process_deployment_status,
             "manage_deployment_status": mock_manage_deployment_status,
             "get_github_status": mock_get_github_status,
+            "log_and_handle_errors": mock_log_and_handle_errors,
         }
         yield mocks
 
@@ -231,3 +235,25 @@ def test_manage_deployment_status(mock_all):
     )
 
     mock_all["logger_error"].assert_not_called()
+
+
+def test_log_and_handle_errors_success(mock_all):
+    @log_and_handle_errors
+    def test_func():
+        return "success"
+
+    result = test_func()
+
+    assert result == "success"
+    mock_all["logger_error"].assert_not_called()
+
+
+def test_log_and_handle_errors_exception(mock_all):
+    @log_and_handle_errors
+    def test_func():
+        raise ValueError("Test exception")
+
+    result = test_func()
+
+    assert result is None
+    mock_all["logger_error"].assert_called_once_with(f"Exception in test_func| Test exception")
