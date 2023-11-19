@@ -33,7 +33,6 @@ def manage_deployment_status(data: Dict):
     owner, repo = repo_data["owner"]["login"], repo_data["name"]
 
     if merged and state == "closed":
-        time.sleep(5)
         service_id = get_render_service_id(repo_url)
         if service_id:
             deployment_status = get_render_deployment_status(service_id)
@@ -44,6 +43,13 @@ def manage_deployment_status(data: Dict):
                 if github_deployment_id:
                     create_github_deployment_status(
                         owner, repo, github_status, deployment_id, user_repo, github_deployment_id
+                    )
+                    new_status = ""
+                    while new_status != "failure" and new_status != "success":
+                        new_render_deployment_status = get_render_deployment_status(service_id)
+                        new_status = get_github_status(new_render_deployment_status["status"])
+                    create_github_deployment_status(
+                        owner, repo, new_status, deployment_id, user_repo, github_deployment_id
                     )
                 else:
                     logger.error("Failed to create GitHub deployment")
