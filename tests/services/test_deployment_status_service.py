@@ -133,7 +133,7 @@ def test_manage_deployment_status(mock_all):
     mock_all["get_render_service_id"].return_value = "service_id"
     mock_all["get_render_deployment_status"].side_effect = [
         {"status": "build_in_progress", "id": "deployment_id"},
-        {"status": "live", "id": "deployment_id"}
+        {"status": "live", "id": "deployment_id"},
     ]
     mock_all["create_github_deployment"].return_value = "github_deployment_id"
 
@@ -153,9 +153,15 @@ def test_manage_deployment_status(mock_all):
     assert mock_all["get_render_deployment_status"].call_count == 2
     mock_all["create_github_deployment"].assert_called_once_with("user/repo", "repo", "user")
     assert mock_all["create_github_deployment_status"].call_count == 2
-    mock_all["create_github_deployment_status"].assert_has_calls([
-        mock.call("user", "repo", "in_progress", "deployment_id", "user/repo", "github_deployment_id"),
-        mock.call("user", "repo", "success", "deployment_id", "user/repo", "github_deployment_id")
-    ])
+    mock_all["create_github_deployment_status"].assert_has_calls(
+        [
+            mock.call(
+                "user", "repo", "in_progress", "deployment_id", "user/repo", "github_deployment_id"
+            ),
+            mock.call(
+                "user", "repo", "success", "deployment_id", "user/repo", "github_deployment_id"
+            ),
+        ]
+    )
 
     mock_all["logger_error"].assert_not_called()
