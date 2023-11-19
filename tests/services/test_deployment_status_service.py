@@ -8,6 +8,9 @@ from render_api.services.deployment_status_service import (
     get_render_service_id,
     get_render_deployment_status,
     manage_deployment_status,
+    process_deployment_status,
+    update_github_deployment_status,
+    log_and_handle_errors,
 )
 
 bearer = "Bearer testtoken"
@@ -34,7 +37,17 @@ def mock_all():
         "render_api.services.deployment_status_service.session.get"
     ) as mock_get, mock.patch(
         "render_api.services.deployment_status_service.get_headers"
-    ) as mock_get_headers:
+    ) as mock_get_headers, mock.patch(
+        "render_api.services.deployment_status_service.update_github_deployment_status"
+    ) as mock_update_github_deployment_status, mock.patch(
+        "render_api.services.deployment_status_service.process_deployment_status"
+    ) as mock_process_deployment_status, mock.patch(
+        "render_api.services.deployment_status_service.manage_deployment_status"
+    ) as mock_manage_deployment_status, mock.patch(
+        "render_api.services.deployment_status_service.get_github_status"
+    ) as mock_get_github_status, mock.patch(
+        "render_api.services.deployment_status_service.log_and_handle_errors"
+    ) as mock_log_and_handle_errors:
         mocks = {
             "get_render_service_id": mock_get_render_service_id,
             "get_render_deployment_status": mock_get_render_deployment_status,
@@ -45,10 +58,16 @@ def mock_all():
             "post": mock_post,
             "get": mock_get,
             "get_headers": mock_get_headers,
+            "update_github_deployment_status": mock_update_github_deployment_status,
+            "process_deployment_status": mock_process_deployment_status,
+            "manage_deployment_status": mock_manage_deployment_status,
+            "get_github_status": mock_get_github_status,
+            "log_and_handle_errors": mock_log_and_handle_errors,
         }
         yield mocks
 
 
+@pytest.mark.usefixtures("mock_all")
 def test_create_github_deployment_status(mock_all):
     mock_all["get_headers"].return_value = {"Authorization": f"{bearer}"}
     mock_response = mock.Mock()
@@ -73,6 +92,7 @@ def test_create_github_deployment_status(mock_all):
     }
 
 
+@pytest.mark.usefixtures("mock_all")
 def test_create_github_deployment(mock_all):
     mock_all["get_headers"].return_value = {"Authorization": f"{bearer}"}
     mock_response = mock.Mock()
@@ -97,6 +117,7 @@ def test_create_github_deployment(mock_all):
     assert deployment_id == "123456"
 
 
+@pytest.mark.usefixtures("mock_all")
 def test_get_render_service_id(mock_all):
     mock_all["get_headers"].return_value = {"Authorization": f"{bearer}"}
     mock_response = mock.Mock()
@@ -113,6 +134,7 @@ def test_get_render_service_id(mock_all):
     assert service_id == "service_id"
 
 
+@pytest.mark.usefixtures("mock_all")
 def test_get_render_deployment_status(mock_all):
     mock_all["get_headers"].return_value = {"Authorization": f"{bearer}"}
     mock_response = mock.Mock()
@@ -129,18 +151,99 @@ def test_get_render_deployment_status(mock_all):
     assert service_status == {"status": "success", "id": "deployment_id"}
 
 
+@pytest.mark.usefixtures("mock_all")
+def test_update_github_deployment_status(mock_all):
+    mock_all["get_render_deployment_status"].side_effect = [
+        {"status": "in_progress"},
+        {"status": "in_progress"},
+        {"status": "success"},
+    ]
+    mock_all["get_github_status"].side_effect = ["in_progress", "in_progress", "success"]
+
+    update_github_deployment_status(
+        "owner",
+        "repo",
+        "in_progress",
+        "deployment_id",
+        "user_repo",
+        "github_deployment_id",
+        "service_id",
+    )
+
+    assert mock_all["create_github_deployment_status"].call_count == 2
+    initial_call_args = mock_all["create_github_deployment_status"].call_args_list[0]
+    final_call_args = mock_all["create_github_deployment_status"].call_args_list[1]
+
+    assert initial_call_args == mock.call(
+        "owner", "repo", "in_progress", "deployment_id", "user_repo", "github_deployment_id"
+    )
+    assert final_call_args == mock.call(
+        "owner", "repo", "success", "deployment_id", "user_repo", "github_deployment_id"
+    )
+
+    assert mock_all["get_render_deployment_status"].call_count == 3
+    assert mock_all["get_github_status"].call_count == 3
+
+
+@pytest.mark.usefixtures("mock_all")
+def test_process_deployment_status(mock_all):
+    deployment_status = {"status": "in_progress", "id": "deployment_id"}
+    mock_all["get_github_status"].return_value = "in_progress"
+    mock_all["create_github_deployment"].return_value = "github_deployment_id"
+
+    process_deployment_status("user_repo", "repo", "owner", deployment_status, "service_id")
+
+    mock_all["get_github_status"].assert_called_once_with("in_progress")
+    mock_all["create_github_deployment"].assert_called_once_with("user_repo", "repo", "owner")
+    mock_all["update_github_deployment_status"].assert_called_once_with(
+        "owner",
+        "repo",
+        "in_progress",
+        "deployment_id",
+        "user_repo",
+        "github_deployment_id",
+        "service_id",
+    )
+
+    mock_all["logger_error"].assert_not_called()
+
+
+@pytest.mark.usefixtures("mock_all")
 def test_manage_deployment_status(mock_all):
+    test_data = {
+        "pull_request": {"state": "closed", "merged": True},
+        "repository": {
+            "full_name": "user/repo",
+            "html_url": "https://example.com/repo",
+            "owner": {"login": "user"},
+            "name": "repo",
+        },
+    }
+
     mock_all["get_render_service_id"].return_value = "service_id"
     mock_all["get_render_deployment_status"].return_value = {
         "status": "live",
         "id": "deployment_id",
     }
-    mock_all["create_github_deployment"].return_value = "github_deployment_id"
+
+    manage_deployment_status(test_data)
+
+    mock_all["get_render_service_id"].assert_called_once_with("https://example.com/repo")
+    mock_all["get_render_deployment_status"].assert_called_once_with("service_id")
+    mock_all["process_deployment_status"].assert_called_once_with(
+        "user/repo", "repo", "user", {"status": "live", "id": "deployment_id"}, "service_id"
+    )
+
+    mock_all["logger_error"].assert_not_called()
+
+
+def test_manage_deployment_status_service_id_null(mock_all):
+    mock_all["get_render_service_id"].return_value = None
 
     test_data = {
         "pull_request": {"state": "closed", "merged": True},
         "repository": {
-            "full_name": f"{full_name}",
+            "full_name": "user/repo",
             "html_url": "https://example.com/repo",
             "owner": {"login": "user"},
             "name": "repo",
@@ -149,11 +252,86 @@ def test_manage_deployment_status(mock_all):
 
     manage_deployment_status(test_data)
 
+    mock_all["logger_error"].assert_called_once_with("Render service ID is null")
+
+    mock_all["get_render_deployment_status"].assert_not_called()
+    mock_all["process_deployment_status"].assert_not_called()
+
+
+def test_manage_deployment_status_not_merged_or_not_closed(mock_all):
+    test_data = {
+        "pull_request": {"state": "open", "merged": False},
+        "repository": {
+            "full_name": "user/repo",
+            "html_url": "https://example.com/repo",
+            "owner": {"login": "user"},
+            "name": "repo",
+        },
+    }
+
+    manage_deployment_status(test_data)
+
+    mock_all["get_render_service_id"].assert_not_called()
+    mock_all["get_render_deployment_status"].assert_not_called()
+    mock_all["process_deployment_status"].assert_not_called()
+    mock_all["logger_error"].assert_not_called()
+
+
+def test_manage_deployment_status_no_deployment_status(mock_all):
+    test_data = {
+        "pull_request": {"state": "closed", "merged": True},
+        "repository": {
+            "full_name": "user/repo",
+            "html_url": "https://example.com/repo",
+            "owner": {"login": "user"},
+            "name": "repo",
+        },
+    }
+
+    mock_all["get_render_service_id"].return_value = "service_id"
+    mock_all["get_render_deployment_status"].return_value = None
+
+    manage_deployment_status(test_data)
+
     mock_all["get_render_service_id"].assert_called_once_with("https://example.com/repo")
     mock_all["get_render_deployment_status"].assert_called_once_with("service_id")
-    mock_all["create_github_deployment"].assert_called_once_with(f"{full_name}", "repo", "user")
-    mock_all["create_github_deployment_status"].assert_called_once_with(
-        "user", "repo", "success", "deployment_id", f"{full_name}", "github_deployment_id"
-    )
-
+    mock_all["process_deployment_status"].assert_not_called()
     mock_all["logger_error"].assert_not_called()
+
+
+def test_process_deployment_status_no_github_deployment_id(mock_all):
+    user_repo = "user/repo"
+    repo = "repo"
+    owner = "user"
+    deployment_status = {"status": "live", "id": "deployment_id"}
+    service_id = "service_id"
+
+    mock_all["create_github_deployment"].return_value = None
+
+    process_deployment_status(user_repo, repo, owner, deployment_status, service_id)
+
+    mock_all["create_github_deployment"].assert_called_once_with(user_repo, repo, owner)
+    mock_all["update_github_deployment_status"].assert_not_called()
+    mock_all["logger_error"].assert_called_once_with("Failed to create GitHub deployment")
+
+
+def test_log_and_handle_errors_success(mock_all):
+    @log_and_handle_errors
+    def test_func():
+        return "success"
+
+    result = test_func()
+
+    assert result == "success"
+    mock_all["logger_error"].assert_not_called()
+
+
+def test_log_and_handle_errors_exception(mock_all):
+    @log_and_handle_errors
+    def test_func():
+        raise ValueError("Test exception")
+
+    result = test_func()
+
+    assert result is None
+    mock_all["logger_error"].assert_called_once_with("Exception in test_func| Test exception")

@@ -1,4 +1,3 @@
-import time
 from functools import wraps
 from typing import Dict
 
@@ -32,23 +31,50 @@ def manage_deployment_status(data: Dict):
     user_repo, repo_url = repo_data["full_name"], repo_data["html_url"]
     owner, repo = repo_data["owner"]["login"], repo_data["name"]
 
-    if merged and state == "closed":
-        time.sleep(5)
-        service_id = get_render_service_id(repo_url)
-        if service_id:
-            deployment_status = get_render_deployment_status(service_id)
-            if deployment_status:
-                github_status = get_github_status(deployment_status["status"])
-                deployment_id = deployment_status["id"]
-                github_deployment_id = create_github_deployment(user_repo, repo, owner)
-                if github_deployment_id:
-                    create_github_deployment_status(
-                        owner, repo, github_status, deployment_id, user_repo, github_deployment_id
-                    )
-                else:
-                    logger.error("Failed to create GitHub deployment")
-        else:
-            logger.error("Render service ID is null")
+    if not (merged and state == "closed"):
+        return
+
+    service_id = get_render_service_id(repo_url)
+    if not service_id:
+        logger.error("Render service ID is null")
+        return
+
+    deployment_status = get_render_deployment_status(service_id)
+    if not deployment_status:
+        return
+
+    process_deployment_status(user_repo, repo, owner, deployment_status, service_id)
+
+
+@log_and_handle_errors
+def process_deployment_status(user_repo, repo, owner, deployment_status, service_id):
+    github_status = get_github_status(deployment_status["status"])
+    deployment_id = deployment_status["id"]
+    github_deployment_id = create_github_deployment(user_repo, repo, owner)
+
+    if not github_deployment_id:
+        logger.error("Failed to create GitHub deployment")
+        return
+
+    update_github_deployment_status(
+        owner, repo, github_status, deployment_id, user_repo, github_deployment_id, service_id
+    )
+
+
+@log_and_handle_errors
+def update_github_deployment_status(
+    owner, repo, status, deployment_id, user_repo, github_deployment_id, service_id
+):
+    create_github_deployment_status(
+        owner, repo, status, deployment_id, user_repo, github_deployment_id
+    )
+    new_status = ""
+    while new_status not in ["failure", "success"]:
+        new_render_deployment_status = get_render_deployment_status(service_id)
+        new_status = get_github_status(new_render_deployment_status["status"])
+    create_github_deployment_status(
+        owner, repo, new_status, deployment_id, user_repo, github_deployment_id
+    )
 
 
 @log_and_handle_errors

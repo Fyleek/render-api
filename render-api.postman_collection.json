@@ -1,0 +1,319 @@
+{
+	"info": {
+		"_postman_id": "d438b233-ac92-4e3d-9d86-e4a813b9dd31",
+		"name": "render-api",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "15014977"
+	},
+	"item": [
+		{
+			"name": "Github",
+			"item": [
+				{
+					"name": "Set deployment",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();\r",
+									"var id = jsonData.id;\r",
+									"\r",
+									"pm.collectionVariables.set(\"deploymentId\", id);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-GitHub-Api-Version",
+								"value": "2022-11-28",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"owner\": \"{{user}}\",\r\n  \"repo\": \"{{repo}}\",\r\n  \"ref\": \"main\",\r\n  \"environment\": \"Production\",\r\n  \"production_environment\": true,\r\n  \"description\": \"Deployment status from Render\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{githubUrl}}/{{user}}/{{repo}}/deployments"
+					},
+					"response": []
+				},
+				{
+					"name": "Set deployment status",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-GitHub-Api-Version",
+								"value": "2022-11-28",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"owner\": \"{{user}}\",\r\n  \"repo\": \"{{repo}}\",\r\n  \"state\": \"in_progress\",\r\n  \"deployment_id\": \"deployment_id\",\r\n  \"environment\": \"Production\",\r\n  \"description\": \"Deployment status from Render\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{githubUrl}}/{{user}}/{{repo}}/deployments/{{deploymentId}}/statuses"
+					},
+					"response": []
+				},
+				{
+					"name": "Deployement",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-GitHub-Api-Version",
+								"value": "2022-11-28",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{githubUrl}}/{{user}}/{{repo}}/deployments/{{deploymentId}}",
+							"host": [
+								"{{githubUrl}}"
+							],
+							"path": [
+								"{{user}}",
+								"{{repo}}",
+								"deployments",
+								"{{deploymentId}}"
+							],
+							"query": [
+								{
+									"key": "",
+									"value": null,
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Deployments",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-GitHub-Api-Version",
+								"value": "2022-11-28",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{githubUrl}}/{{user}}/{{repo}}/deployments"
+					},
+					"response": []
+				},
+				{
+					"name": "Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-GitHub-Api-Version",
+								"value": "2022-11-28",
+								"type": "text"
+							}
+						],
+						"url": "{{githubUrl}}/{{user}}/{{repo}}/deployments/{{deploymentId}}/statuses"
+					},
+					"response": []
+				}
+			],
+			"auth": {
+				"type": "bearer",
+				"bearer": {
+					"token": ""
+				}
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Render",
+			"item": [
+				{
+					"name": "Services",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let jsonData = pm.response.json();\r",
+									"let repo = pm.collectionVariables.get(\"repo\");\r",
+									"let user = pm.collectionVariables.get(\"user\");\r",
+									"let repo_url = \"https://github.com/\" + user + \"/\" + repo\r",
+									"for (let service of jsonData) {\r",
+									"    if (service.service.repo == repo_url) {\r",
+									"        pm.collectionVariables.set(\"serviceId\", service.service.id);\r",
+									"    }\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "https://api.render.com/v1/services"
+					},
+					"response": []
+				},
+				{
+					"name": "ServiceDeploy",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "https://api.render.com/v1/services/{{serviceId}}/deploys"
+					},
+					"response": []
+				}
+			],
+			"auth": {
+				"type": "bearer",
+				"bearer": {
+					"token": ""
+				}
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": {
+			"token": ""
+		}
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "user",
+			"value": ""
+		},
+		{
+			"key": "repo",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "githubUrl",
+			"value": "https://api.github.com/repos",
+			"type": "string"
+		},
+		{
+			"key": "renderUrl",
+			"value": "https://api.render.com/v1",
+			"type": "string"
+		},
+		{
+			"key": "deploymentId",
+			"value": ""
+		},
+		{
+			"key": "serviceId",
+			"value": ""
+		}
+	]
+}
