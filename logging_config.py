@@ -4,7 +4,7 @@ import logging
 logger = logging.getLogger("render-api")
 
 # Set the global logging level (can be adjusted as needed)
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 # Configure a file handler to log DEBUG-level logs to a debug.log file
 debug_file_handler = logging.FileHandler("debug.log")
