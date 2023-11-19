@@ -20,7 +20,7 @@ full_name = "user/repo"
 @pytest.fixture
 def mock_all():
     with mock.patch(
-            "render_api.services.deployment_status_service.get_render_service_id"
+        "render_api.services.deployment_status_service.get_render_service_id"
     ) as mock_get_render_service_id, mock.patch(
         "render_api.services.deployment_status_service.get_render_deployment_status"
     ) as mock_get_render_deployment_status, mock.patch(
