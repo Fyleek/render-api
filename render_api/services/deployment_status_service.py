@@ -1,3 +1,4 @@
+import time
 from functools import wraps
 from typing import Dict
 
@@ -72,6 +73,9 @@ def update_github_deployment_status(
     while new_status not in ["failure", "success"]:
         new_render_deployment_status = get_render_deployment_status(service_id)
         new_status = get_github_status(new_render_deployment_status["status"])
+        time.sleep(
+            10
+        )  # You can remove it (but it's better to not spam the render API [400 GET request/minutes])
     create_github_deployment_status(
         owner, repo, new_status, deployment_id, user_repo, github_deployment_id
     )
