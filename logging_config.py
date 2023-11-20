@@ -20,7 +20,7 @@ logger.addHandler(configure_file_handler("warning.log", logging.WARNING))
 logger.addHandler(configure_file_handler("error.log", logging.ERROR))
 logger.addHandler(configure_file_handler("critical.log", logging.CRITICAL))
 
-# Optinal handler for console logs
+# Optional handler for console logs
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.DEBUG)
 console_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
